@@ -1,0 +1,48 @@
+{% extends 'main.html' %} {% block content %}
+<div class="container text-center text-white">
+{% if order %}
+ {% for ord in order %}
+<br>
+  
+  <div class="card text-center bg-dark text-white " >
+    <div class="card-header">{{ord.package}}</div>
+    <div class="card-body">
+      <ul class="list-group list-group-flush bg-dark">
+        <li class="list-group-item bg-dark">
+          <button type="button" class="btn btn-outline-info">
+            No. of slots {{ ord.nos }}
+          </button>
+          <button type="button" class="btn btn-outline-info">
+            Total amount: {{ord.price }}
+          </button>
+          <button type="button" class="btn btn-outline-info">
+            Agent : {{ ord.agent }}
+          </button>
+          {% if ord.status%}
+
+          <button type="button" class="btn btn-outline-success">
+            Successful booking
+          </button>
+
+          {% else %}
+          <button type="button" class="btn btn-outline-danger">
+            There was an error during booking
+          </button>
+
+          {% endif %}
+        </li>
+      </ul>
+      <p class="card-text">Booked on {{ord.time}}</p>
+    </div>
+    </div>
+
+ {% endfor %}
+ {% else %}
+ <h1 class="text-white text-center"> You don't have any bookings.</h1>
+ <a href="{% url 'package' %}">
+          <button type="button" class="btn btn-outline-info btn-lg px-4 me-sm-3 fw-bold">Go back home</button></a>
+ {% endif %}
+
+ </div>
+
+{% endblock content %}
