@@ -1,19 +1,26 @@
 
+from email import message
+from multiprocessing import context
 from django.shortcuts import render, redirect
-from .models import Package, CustomUser, Agent, book
+from .models import Package, CustomUser, Agent, book ,Travel_mode
 from django.http import HttpResponse
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.models import User, auth
 from django.contrib import messages
 from .forms import AgentSignUpForm, PackageForm, UserSignUpForm, AgentSignUpForm, AgentDetailForm
 from django.contrib.auth.decorators import login_required
-from .decorators import agent_only
+from .decorators import agent_only, customer_only
+from django.utils import timezone as tz
+from django.db.models import Q
 # Create your views here.
 
 
 def index(request):
-    if request.user.is_authenticated:
+    if request.user.is_authenticated and request.user.is_customer:
         return redirect('package')
+    elif request.user.is_authenticated and request.user.is_agent:
+        return redirect('agent_packages')
+
     return render(request, 'backpacker/index.html')
 
 
@@ -25,7 +32,7 @@ def user_signup(request):
 
     }
     if request.method == 'POST':
-        form = UserSignUpForm(request.POST)
+        form = UserSignUpForm(request.POST,request.FILES)
         if form.is_valid():
             user = form.save()
             user.username = user.username.lower()
@@ -54,7 +61,10 @@ def agent_signup(request):
             detail = detail_form.save(commit=False)
             detail.User = profile
             detail.save()
-            return redirect('index')
+            return redirect('agent_packages')
+        else:
+            messages.error(request, 'An error occurred during registration')
+            return redirect('agent_signup')
 
     return render(request, "backpacker/agent_signup.html", context)
 
@@ -96,8 +106,13 @@ def is_valid_queryparam(param):
 
 
 @login_required(login_url='login')
+@customer_only
 def package(request):
-    packages = Package.objects.all()
+
+    today = tz.localtime(tz.now()).date()
+
+    packages = Package.objects.filter(ddate__gt=today)
+    packages=packages.filter(slots__gt=0)
     agents = Agent.objects.all()
     destination = request.GET.get('destination')
     departure = request.GET.get('departure')
@@ -108,6 +123,7 @@ def package(request):
     agent = request.GET.get('agent')
     min_dur = request.GET.get('min_dur')
     max_dur = request.GET.get('max_dur')
+    type = request.GET.get('type')
 
     if is_valid_queryparam(destination):
         packages = packages.filter(Location__icontains=destination)
@@ -128,28 +144,38 @@ def package(request):
         packages = packages.filter(duration__gte=min_dur)
     if is_valid_queryparam(max_dur):
         packages = packages.filter(duration__lte=max_dur)
+    if is_valid_queryparam(type) and type != 'Choose...':
+         packages = packages.filter(mode__contains = type)
+    # # if is_valid_queryparam(type) and type != 'Choose...':
+    # #     packages = packages.filter(mode=type)
+        
     context = {
         'packages': packages,
         'agents': agents
+        
     }
     return render(request, 'backpacker/contents.html', context)
 
 
 @login_required(login_url='login')
+@customer_only
 def package_details(request, pk):
     package = Package.objects.get(id=pk)
     context = {'package': package}
     if request.method == "POST":
 
         nos = int(request.POST.get('nos'))
+        bord= request.POST.get('station')
         if nos >= 1:
             price = nos*package.cost
             user = request.user
             package_name = package
             agent_name = package.agent
             books = book.objects.create(user=user, package=package_name, price=price,
-                                        nos=nos, agent=agent_name, status=True)
+                                        nos=nos, agent=agent_name,boarding=bord, status=True)
             package.slots = package.slots-nos
+            if request.user not in package.users.all():
+                package.users.add(request.user)
             package.save()
             request.session['book_id'] = books.id
 
@@ -161,6 +187,7 @@ def package_details(request, pk):
 
 
 @login_required(login_url='login')
+@customer_only
 def booking_success(request):
     bookid = request.session['book_id']
     order = book.objects.get(id=bookid)
@@ -172,26 +199,94 @@ def booking_success(request):
 
 
 @login_required(login_url='login')
+@customer_only
 def bookinglist(request):
     user = request.user
     order = book.objects.filter(user=user)
+    # package=Package.objects.filter()
+   
     context = {
-        'order': order
+        'order': order,
+       
     }
 
     return render(request, 'backpacker/bookinglist.html', context)
 
 
+@login_required(login_url='login')
+@customer_only
+def cancel_booking(request, pk):
+    
+    ord = book.objects.get(id=pk)
+    package=Package.objects.get(title=ord.package)
+    if request.method=='POST':
+        nos = int(request.POST.get('nos'))
+        package.slots=package.slots+nos
+        print(package)
+        print(package.slots)
+        package.save()
+        ord.nos=ord.nos-nos
+        print(ord.nos)
+        if ord.nos==0:
+            ord.status = False
+        ord.save()
+        return redirect('bookinglist')
+
+    
+    
+    context = {
+        'ord': ord
+    }
+
+    return render(request, 'backpacker/bookingcancel.html', context)
+
+
+@login_required(login_url='login')
+@agent_only
 def agent_packages(request):
     user = request.user
     age = Agent.objects.get(User=user)
     pack = Package.objects.filter(agent=age)
+   
 
     context = {
-        'pack': pack
+        'pack': pack,
+       
     }
     return render(request, "backpacker/agent_packages.html", context)
 
+@login_required(login_url='login')
+@agent_only
+def package_status(request,pk):
+    package=Package.objects.get(id=pk)
+    ps=package.users.all()
+    print(ps)
+    
+    orders=book.objects.filter(package=package)
+
+    x=0
+    for ord in orders:
+        x=x+ord.nos
+
+    context={
+        'ps':ps,
+        'package':package,
+        'x':x,
+        
+    }
+
+
+    
+    return render(request, "backpacker/packagestatus.html",context)
+
+
+def user_detail(request,pk):
+    u=CustomUser.objects.get(id=pk)
+   
+    context={
+        'u':u
+    }
+    return render(request,"backpacker/userdetail.html",context)
 
 @login_required(login_url='login')
 @agent_only
@@ -201,11 +296,44 @@ def create_package(request):
         'form': form
     }
     if request.method == 'POST':
-        form = PackageForm(request.POST)
+        form = PackageForm(request.POST ,request.FILES)
         if form.is_valid():
-            package = form.save()
-            return redirect('package')
+            p=form.save(commit=False)
+            u = request.user
+            age = Agent.objects.get(User=u)
+            p.agent = age
+            
+            print (age)
+            print(p.agent)
+            p.save()
+            return redirect('agent_packages')
         else:
-            messages.error(request, 'An error occurred during registration')
-            return redirect('signup')
+            print (form.errors)
+            return HttpResponse(form.errors.values())
+            
+
+            # messages.error(request, 'An error occurred during registration')
+            # return redirect('create')
+    return render(request, "backpacker/create_package.html", context)
+
+
+@login_required(login_url='login')
+@agent_only
+def package_edit(request, pk):
+    package = Package.objects.get(id=pk)
+    form = PackageForm(request.POST or None,instance=package)
+    
+    if request.method == 'POST':
+        if request.method == 'POST':
+            if form.is_valid():
+                form.save()
+                return redirect('agent_packages')
+        else:
+            messages.error(request, 'An error occurred during editing')
+            return redirect('agent_packages')
+
+    context = {
+        'package': package,
+        'form': form
+    }
     return render(request, "backpacker/create_package.html", context)

@@ -13,6 +13,10 @@ urlpatterns = [
     path('package-det/<str:pk>/',views.package_details,name='package-det'),
     path('booking_success/',views.booking_success,name='booking_success'),
     path('bookinglist/',views.bookinglist,name='bookinglist'),
+    path('package-edit/<str:pk>/',views.package_edit,name='package-edit'),
+    path('bookind-del/<str:pk>/',views.cancel_booking,name='booking-del'),
+    path('package-status/<str:pk>/',views.package_status,name='package-status'),
+    path('package-detail/<str:pk>/',views.user_detail,name='user-detail'),
    
    
 ]

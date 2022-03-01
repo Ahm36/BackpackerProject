@@ -14,3 +14,14 @@ def agent_only(view_func):
             messages.error(request, 'you must be an agent')
             return render(request, "backpacker/login.html")
     return wrap
+
+
+def customer_only(view_func):
+    def wrap(request, *args, **kwargs):
+        user=request.user
+        if user.is_customer:
+            return view_func(request, *args, **kwargs)
+        else:
+            messages.error(request, 'you must be an User')
+            return render(request, "backpacker/login.html")
+    return wrap

@@ -28,11 +28,11 @@
         <div class="form-row">
           <div class="form-group col-md-2 col-lg-2">
             <label for="viewCountMin">Min cost</label>
-            <input type="number" min=0 class="form-control" id="mincost" placeholder="0" name="min_cost">
+            <input type="number" min=0 class="form-control" id="mincost" placeholder="min" name="min_cost">
           </div>
           <div class="form-group col-md-2 col-lg-2">
             <label for="viewCountMax">Max cost</label>
-            <input type="number" min=0 class="form-control" id="maxcost" placeholder="10000?" name="max_cost">
+            <input type="number" min=0 class="form-control" id="maxcost" placeholder="max" name="max_cost">
           </div>
           <div class="form-group col-md-2 col-lg-2">
             <label for="publishDateMin">Date : From</label>
@@ -55,20 +55,22 @@
           <div class="form-row">
           <div class="form-group col-md-3 ">
             <label for="MinDur">Duration : From</label>
-            <input type="number" min=1 class="form-control" id="viewCountMin" placeholder="0" name="min_dur">
+            <input type="number" min=1 class="form-control" id="viewCountMin" placeholder="min" name="min_dur">
           </div>
           <div class="form-group col-md-3 ">
             <label for="maxdur">Duration : To</label>
-            <input type="number" min=1 class="form-control" id="viewCountMax" placeholder="10000?" name="max_dur">
+            <input type="number" min=1 class="form-control" id="viewCountMax" placeholder="max" name="max_dur">
           </div>
-          <div class="form-group col-md-6">
-            {% comment %} <label for="category">Type</label>
+          <div class="form-group col-md-3">
+            <label for="category">Type</label>
             <select id="category" class="form-control" name="type">
-              <option selected>Choose...</option>
-              {% for type in types %}
-              <option value="{{ type }}">{{ type }}</option>
-              {% endfor %}
-            </select> {% endcomment %}
+             
+              
+              <option value='B'>Bus</option>
+              <option value='T'>Train</option>
+              <option value='F'>Flight</option>
+              
+            </select> 
           </div>
         </div>
         <button type="submit" class="btn btn-primary">Search</button>
@@ -86,7 +88,7 @@
  {% if packages %}
 
     {% for package in packages  %}
-    {% if package.slots %}
+    
 
   <a href="{% url 'package-det' package.id %}" style="text-decoration:none ; color:#fff">
   <div class="row">
@@ -103,10 +105,21 @@
         </div>
         </div>
          <ul class="list-group list-group-flush bg-dark">
-         <li class="list-group-item bg-dark"><p class="card-text">Departure Location : {{ package.dloc }} </p></li>
-        <li class="list-group-item bg-dark"><p class="card-text">Duration: {{ package.duration }} days</p></li>
-        <li class="list-group-item bg-dark"><p class="card-text">Date : {{ package.ddate }} </p></li>
-        <li class="list-group-item bg-dark">  <button type="button" class="btn btn-info">
+         <li class="list-group-item bg-dark">
+         <p class="card-text">Departure Location : {{ package.dloc }} </p>
+        <p class="card-text">Duration: {{ package.duration }} days</p>
+        <p class="card-text">Date : {{ package.ddate }} </p>
+       
+       <p class="card-text">Mode of Traveling : 
+       {% if package.mode == "T" %}
+       Train
+       {% elif package.mode == "B" %}
+       Bus
+       {% elif package.mode == "F" %}
+       Flight
+      {% endif %}
+        </p>
+         <button type="button" class="btn btn-info">
         Cost <span class="badge bg-secondary">₹{{package.cost}}</span>
           </button></li>
           
@@ -116,11 +129,12 @@
     {{package.posteddate|timesince}} ago
   </div>
   </div>
-  <br>
+  </div>
+  </div>
+<br>
+
   </a>
-  {% else %}
-   <h1 class="text-white text-center"> No packages matching your search</h1>
-   {% endif %}
+ 
 
    {% endfor %}
    {% else %}

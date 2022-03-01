@@ -6,18 +6,26 @@ from django.db import transaction
 
 
 
-class PackageForm(forms.ModelForm):
-    
+class DateInput(forms.DateInput):
+    input_type = 'date'
 
+
+
+class PackageForm(forms.ModelForm):
     class Meta:
         model = Package
         fields = '__all__'
-
+        exclude = ['users','agent']
+       
+        widgets = {
+            'ddate': DateInput()
+        }
+   
 
 class UserSignUpForm(UserCreationForm):
     class Meta:
         model = CustomUser
-        fields=['username','email',]
+        fields=['username','email','phone','aadhar_no','aadhar_image',]
         
     @transaction.atomic
     def save(self):
